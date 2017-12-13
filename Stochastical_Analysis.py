@@ -241,24 +241,44 @@ def df(x):
 
 
 
-
+#Extended Ralphson-Newton method - perturbed starting point
 # use extended Newton-Method to find zero's of polynomial system by randomly pertubating already known zero
-def newton(x0):
+def newton_pert(x0):
     x=x0
     i=0
-
     maxIt=1000
-    pert1 =delta* np.random.rand(len(x), 1)     # set delta neighborhood to already known zero
-    x=x+.1*pert1[0]
+    
+    
+    eta = 10**(-5)                              # radius of pertubation
+    bias = np.ones((len(x),1))                  # shift uniformly distribution to intervall -1 to 1
+    
+    pert1 =2*eta* (np.random.rand(len(x), 1)[0]-.5*bias[0])     
+    x=x+pert1
     while(i<maxIt and np.linalg.norm(f(x))>precision):
         psi=df(x)
         inv=np.linalg.pinv(psi)                 # use Monroe-Pseudoinverse for Newton-Method to be applicalbe in an underdetermined system
         y=np.dot(inv,f(x))
         x=np.add(x,-y)
         i+=1
+    return np.array(x)
 
-    print(i)
-    return x
+# Extended Ralphson-Newton method - deterministic starting point
+def newton(x0):
+    i = 0
+    x = x0
+
+    maxIt = 10000
+
+    while (i < maxIt and np.linalg.norm(f(x)) > precision):
+        psi = df(x)
+        inv = np.linalg.pinv(
+            psi)  # use Monroe-Pseudoinverse for Newton-Method to be applicable in an underdetermined system
+        y = np.array(np.dot(inv, f(x)))
+        x = np.add(x, -y[0])
+        i += 1
+
+    return np.array(x)
+
 
 #create a point cloud of samples of the algebraic variety locally
 def sampling(number_of_samples,x):
@@ -280,30 +300,85 @@ def scatter_matrix(data):
     mean = mean_vector(data)
     for i in range(len(data)):
         scatter += np.dot(data[i,:]-mean, (data[i,:]-mean).T)
-    return scatter
+    return 1(len(data)-1)*scatter
 
 #calcualte Eigenvalue of covariance matrix
 def eigenvalue(scat_matrix):
     return np.linalg.eig(scat_matrix)
 
-#calculate dimension of algebraic variety by finding the nummber of non-zero Eigenvalues within some precision
-def dimensionality_check(data):
+# check if zero is isolated by surounding zero with starting points for Newton, such that every distinct new zero is closer to one of the starting points than the original zero
+# cover a simplex plus origin with spheres of radius varying delta on centres of simplex plus origin with known zero centred at
+# if there is any other zero in this simplex plus origin at least on vertex of the simplex would converge there under newton
+def is_zero_dimensional(x0):
+    m = len(x0)
+    v = []
+    v_centre = []
+    eta = 10 ** (-8)  # radius of neighborhood
 
-    scat_matrix=scatter_matrix(data)
-    eig_val=eigenvalue(scat_matrix)[0]
-    if all(eig < precision for eig in eig_val):
-        print("The system has dimension zero or is singular")
-        #Assumption: singularities always have tangent cone (translated affine cone (i.e. commplex case in Cox Little O'Shea))
-        # and hence have 0 covariance eigenvalues
+    # create centre point
+    for i in range(m):
+        v_centre.append(1 / (m + 1))
 
-        if(is_Isolated(data,delta)): print('The system has dimension zero')
-        else: print('The system is singular')
+    # create points on vertices of tetrahedron
+    for i in range(m + 1):
+        # create coordinates of higherdim. tetrahedron
+        coordinate = []
+        for j in range(m):
+            k = 0
+            if (j + 1 == i): k = 1
+            coordinate.append(k)
+            # shift centre to x0
+        # print(coordinate)
+        coordinate = eta * np.array(coordinate) + np.array(x0) + eta * np.array(v_centre)  # translate tetrahedron to right place (ne
+        v.append(list(coordinate))
+
+    v.append((v_centre))
+
+    # calculate closest zero to vertices of tetrahedron
+    res = []
+
+    for i in range(m + 1):
+        res.append(newton((v[i])))
+
+    var = 0
+    for i in range(m + 1):
+        var += np.linalg.norm(res[i] - x0)
+
+    if (1 / (m + 1) * var < 10**(-15)):
+        print(1 / (m + 1) * var)
+        return True
     else:
-        poss_dim =sum(eig_val>precision)
-        print("the system has positive dimension smaller than "+str(poss_dim))
-        #Assupmtion: Since all singularites are cone like all cases of positive covariance will be at a regular point
+        return False
 
-        # calculate_dimension(scat_matrix,poss_dim)
+#calculate dimension of algebraic variety by finding the nummber of non-zero Eigenvalues within some precision
+def dimensionality_check(x0, sample_number):
+    if(is_zero_dimensional(x0)):
+        print('The system has dimension zero')
+        return 0
+    else:
+        data = sampling(sample_number,x0)
+        scat_matrix=scatter_matrix(data)
+        eig_val=eigenvalue(scat_matrix)[0]
+        print(eig_val)
+        if all(eig < precision for eig in eig_val):
+            print("The system is singular")
+            return -1
+            #Assumption: singularities always have tangent cone (translated affine cone (i.e. commplex case in Cox Little O'Shea))
+            # and hence have 0 covariance eigenvalues
+
+            #NEW! assumption might not be true, in the sense that there are singularieties with non-zero covariance.
+
+            # if(is_Isolated(data,delta)): print('The system has dimension zero')
+            # else: print('The system is singular')
+        else:
+            poss_dim =sum(eig_val>precision)
+            print("the system has positive dimension smaller than "+str(poss_dim))
+            return poss_dim
+            #Assupmtion: Since all singularites are cone like all cases of positive covariance will be at a regular point
+
+            # calculate_dimension(scat_matrix,poss_dim)
+
+            #NEW! Slice system such that directions with zero variance can be checked on singularities
 
 # # core of dimensionality_check(): Find true dimension by checking error of sample points to linear subspaces induced by PCA
 # def calculate_dimension(data,poss_dim):
@@ -320,12 +395,39 @@ def dimensionality_check(data):
 #
 
 
-# check if  zero is of zero dimesnion by finding neighborhood such thhat there is only one zero
-def is_Isolated(data,delta):
+# intersect variety along eigenvectors of scatter matrix corresponding to vanishing eigenvalues
+def is_Singular(data,delta):
 
     if(data ): return True
     else: return False
 
+x= [
+    0.75, 0.65, 0.0,
+    0.6, 0.25,
+    0.75, 0.35, 0.5,
+    0.75, 0.9, 0.5,
+    0.75, 0.1, 0.0,
+    0.15, 0.5, 0.25,
+    0.5, 0.75, 0.9,
+    0.0, 0.75, 0.1,
+    0.5, 0.75, 0.35,
+    0.5, 0.25, 0.6,
+    0.5, 0.25, 0.15,
+    0.4, 0.0, 0.25,
+    0.25, 0.15, 0.5,
+    0.25, 0.85, 0.0,
+    0.1, 0.0, 0.75,
+    0.25, 0.4, 0.0,
+    0.85, 0.0, 0.25,
+    0.25, 0.6, 0.5,
+    0.65, 0.0, 0.75,
+    0.0, 0.25, 0.4,
+    0.0, 0.25, 0.85,
+    0.0, 0.75, 0.65,
+    1, 1
+]
+
+dimensionality_check(x,100000)
 
 
 
@@ -334,14 +436,8 @@ def is_Isolated(data,delta):
 
 
 
-x=[0,1,1,1]
-print(f(x))
-print(df(x))
-sample =sampling(10,x)
-print(sample)
-print(mean_vector(sample))
-print(scatter_matrix(sample))
-print(eigenvalue(scatter_matrix(sample))[0])
-dimensionality_check(sample)
+
+
+
 
 
