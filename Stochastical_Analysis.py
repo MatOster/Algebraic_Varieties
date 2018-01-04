@@ -57,6 +57,30 @@ def newton(x0):
 
     return np.array(x)
 
+# gradient descent (already specialized for Lagrangian = squared norm of defining polynomial system)
+def grad_des(x):
+    i = 0
+    max_It = 10000
+    x = np.array(x)
+    xnow = 0 * x
+    gradnow = 0 * x
+    norm =1
+    while (i < max_It and norm > 5+10**(-15)):
+        grad = np.array(Function_BMN.gradient(x))
+        norm =np.linalg.norm(list(grad))
+        
+        #adaptive stepsize after Barzilai and Borwein
+        xprev = xnow
+        xnow = x
+        s = xnow - xprev
+        gradprev = gradnow
+        gradnow = grad
+        g = gradnow - gradprev
+        alpha1 = .1 * s.dot(g) / np.linalg.norm(g)**2
+        x = x - alpha1 * grad
+        i += 1
+
+    return x
 
 #create a point cloud of samples of the algebraic variety locally
 def sampling(number_of_samples,x):
@@ -87,6 +111,8 @@ def eigenvalue(scat_matrix):
 # check if zero is isolated by surounding zero with starting points for Newton, such that every distinct new zero is closer to one of the starting points than the original zero
 # cover a simplex plus origin with spheres of radius varying delta on centres of simplex plus origin with known zero centred at
 # if there is any other zero in this simplex plus origin at least on vertex of the simplex would converge there under newton
+
+#Attention!! this method only works, if Netwon method finds closest zero to given starting point. This is not always the case
 def is_zero_dimensional(x0):
     m = len(x0)
     v = []
@@ -127,6 +153,22 @@ def is_zero_dimensional(x0):
         return True
     else:
         return False
+    
+#Alternative method to check for isolation
+#Find minimum of the squared norm of the defining polynomial system under the constraint to have cetain distance to known zero. 
+#If the minimum is zero close to known zero, it is maybe not isolated
+def is_zero_dimensional_grad_des(x0,eta):
+
+    xr = np.random.rand(len(x0),1)[0]
+    bias  =1/2*np.ones((len(x0),1))
+    xrand = 2*(xr-bias[0])
+    x= eta/np.linalg.norm(xrand)*xrand+np.array(x0)
+    #gradient descent on Lagrange functional
+    y = grad_des(x)
+    if (np.linalg.norm(f(y))<10**(-15)):
+
+        return True
+    else: return False
 
 #calculate dimension of algebraic variety by finding the nummber of non-zero Eigenvalues within some precision
 def dimensionality_check(x0, sample_number):
