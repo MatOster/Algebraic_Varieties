@@ -2,6 +2,8 @@ import numpy as np
 
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 import mdp
 from matplotlib.mlab import PCA
 
@@ -209,7 +211,7 @@ def is_zero_dimensional_grad_des(x0,eta):
     bias  =1/2*np.ones((len(x0),1))
     xrand = 2*(xr-bias[0])
     x= eta/np.linalg.norm(xrand)*xrand+np.array(x0)
-    #print(len(x))
+   
     y = grad_des(x,eta)
     print(np.linalg.norm(f(y)))
     if (np.linalg.norm(f(y))<10**(-15)):
@@ -228,14 +230,9 @@ def dimensionality_check(x0, sample_number):
         print('The system has dimension zero')
         return 0
     else:
-        print('PCA')
         data = sampling(sample_number,x0)
         scat_matrix=scatter_matrix(data,x0)
-        print('Achtung PCA')
-        eig_val=mdp.pca(data,svd=True)#igenvalue(scat_matrix)
-             #print(eig_val)
-        eig_val2 = PCA(data)
-        print(list(eig_val2.fracs))
+        
         data -= data.mean(axis=0)
 
         r = np.cov(data.T)
@@ -248,59 +245,10 @@ def dimensionality_check(x0, sample_number):
         evals = evals[idx]
         # select the first n eigenvectors (n is desired dimension
         # of rescaled data array, or dims_rescaled_data)
+        print('The eigenvalues are: ')
         print(list(evals))
-        #print(np.sqrt(np.abs((eig_val[0]))))
-        B=eig_val[0]#np.random.rand(67,67)  #eig_val[1]
-        (datanew) = np.dot(np.array(data),np.array(B).T)
-        #print(datanew)
-        point =np.dot(np.array(B),np.array(x0))
-        #datanew = list(datanew)
-        #datanew=data
-        #print(point)
-        #
-        #print(len(datanew))
-        #print(len(datanew[0]))
-        p =[]
-       # ((p.append(list(datanew[0][0][0]))).append(list(datanew[1][0][0])))
-        print(evecs[2])
-        return 1
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        for i in range(len(datanew)):
-            ax.scatter(np.array(datanew[i][64]),np.array(datanew[i][65]),np.array(datanew[i][66]),c='r',marker='.')
-        ax.scatter(point[64],point[65],point[66],c='g', marker='x')
-        plt.show()
-
-
-        if all(np.sqrt(np.abs(eig)) < precision for eig in eig_val[0]):
-            print("The system is singular")
-            #Assumption: singularities always have tangent cone (translated affine cone (i.e. commplex case in Cox Little O'Shea))
-            # and hence have 0 covariance eigenvalues
-
-            #NEW! assumption might not be true, in the sense that there are singularieties with non-zero covariance.
-
-            # if(is_Isolated(data,delta)): print('The system has dimension zero')
-            # else: print('The system is singular')
-        else:
-            poss_dim =sum(np.sqrt(np.abs(eig_val[0]))>precision)
-            print("the system has positive dimension smaller than "+str(poss_dim))
-            #Assupmtion: Since all singularites are cone like all cases of positive covariance will be at a regular point
-
-            # calculate_dimension(scat_matrix,poss_dim)
-
-            #NEW! Slice system such that directions with zero variance can be checked on singularities
-
-
-
-
-
-
-
-
-
-
-#x=[0,1,1,1]
+       
+       
 x= [
     0.75, 0.65, 0.0,
     0.6, 0.25,
@@ -327,44 +275,6 @@ x= [
     1,1
 
 ]
-print(len(x))
-#print(len(gradient(x,10**(-5)) ))
-#print((f(x)))
-#print(len(df(x)))
-#print(df(x))
-#sample =sampling(10,x)
-#print(sample)
-#print(mean_vector(sample))
-#print(scatter_matrix(sample))
-#print(eigenvalue(scatter_matrix(sample))[0])
-#dimensionality_check(x,1000)
-print(len(df(x)))
-print(np.linalg.matrix_rank(df(x)))
-#print(newton_pert(x))
-xtest = [0.75000250816470049, 0.64993614619011886, 3.9805848537843542e-05, 0.60002993176306241, 0.2500945566394599, 0.75006668405000854, 0.34990628651655881, 0.50001624464579564, 0.75013810582594498, 0.89990628017310015, 0.49997292335357851, 0.75018824020614361, 0.099936299819883959, 0.00040654325699226388, 0.15002972823404614, 0.49966084910269848, 0.2497646194556461, 0.49992324191087673, 0.74997473553703853, 0.90011879671820039, -1.5139312852070043e-05, 0.74974080824040445, 0.099942886184010732, 0.50012840946935599, 0.74977662080841057, 0.35011887066654429, 0.50005396180922057, 0.24992500785817948, 0.60017908406826037, 0.50001234360693547, 0.2498703121921442, 0.15017907977399619, 0.40002439820050567, -0.00036806715595574541, 0.24968885106291486, 0.24991039697800296, 0.14973010913132739, 0.49956146683383551, 0.24998775241885213, 0.8496939619914825, -0.00032636811225249409, 0.10006109308219586, -0.00060048282863979041, 0.74945324189437623, 0.24979446818521331, 0.39969349253104647, 0.00036576443595194309, 0.85002445589259146, -0.00018988679031170814, 0.24986693264098198, 0.25013218851697033, 0.59973039727939015, 0.50007893306385454, 0.65005997241191926, 3.8142913150121424e-05, 0.7503614782128728, 8.1264901297000723e-05, 0.2497336952003047, 0.3999374401869501, -4.9844907276008363e-05, 0.24986309588130201, 0.8499374710363311, 0.00014552168668188257, 0.74988856370470969, 0.64994284287161452, 1.0, 1.0]
 
+dimensionality_check(x,1000)
 
-# #print(f(xtest))
-# #print(np.linalg.norm(f(xtest)))
-# eta = 10**(-5)
-# i = 0
-# maxI = 1000
-# zero =0
-# while (i<maxI ):
-#     eta -= -10**(-8)
-#     j=0
-#     it_Max=100000
-#     while (j<it_Max):
-#         if(not zerofinder(x)):
-#             print('zero')
-#             zero += 1
-#             break
-#         else: j+=1
-#
-#
-#
-#     print(i)
-#     i+=1
-#     #if(is_zero_dimensional_grad_des(x,eta)):break
-# #print(zero)
-# # print(eta)
